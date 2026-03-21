@@ -58,6 +58,22 @@
     }
     #status.hidden { opacity: 0; }
 
+    /* Progress bar */
+    #progress-bar {
+      position: fixed;
+      bottom: 0; left: 0;
+      width: 100vw; height: 3px;
+      z-index: 8;
+      background: rgba(255,255,255,0.1);
+    }
+    #progress-fill {
+      height: 100%;
+      width: 100%;
+      background: rgba(255,255,255,0.3);
+      transform-origin: left;
+      transition: none;
+    }
+
     /* Transition overlays */
     .transition-overlay {
       position: fixed; top: 0; left: 0;
@@ -107,6 +123,7 @@
   <div class="transition-overlay" id="trans-channel"><div class="no-signal">NO SIGNAL</div></div>
 
   <div id="status" class="hidden"></div>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
 
   <div id="controls">
     <div class="row">
@@ -158,6 +175,8 @@
     let lastPlayed = [];
     let seekDone = false;
     let staticAnimId = null;
+    let progressAnimId = null;
+    let clipStartTime = 0;
 
     const $ = id => document.getElementById(id);
     const status = $('status');
@@ -359,6 +378,10 @@
           status.classList.add('hidden');
         }
 
+        // Start progress bar countdown
+        clipStartTime = Date.now();
+        startProgressBar(clipLen);
+
         // Set timer to skip (works for live streams too — just plays for clipLen then moves on)
         clipTimer = setTimeout(() => playNext(), clipLen * 1000);
 
@@ -386,6 +409,26 @@
 
     function showStatus(msg) { status.textContent = msg; status.classList.remove('hidden'); }
 
+    // --- Progress bar ---
+    function startProgressBar(clipLen) {
+      cancelAnimationFrame(progressAnimId);
+      const fill = $('progress-fill');
+      const totalMs = clipLen * 1000;
+      function tick() {
+        const elapsed = Date.now() - clipStartTime;
+        const remaining = Math.max(0, 1 - (elapsed / totalMs));
+        fill.style.transform = 'scaleX(' + remaining + ')';
+        if (remaining > 0 && playing) {
+          progressAnimId = requestAnimationFrame(tick);
+        }
+      }
+      tick();
+    }
+    function stopProgressBar() {
+      cancelAnimationFrame(progressAnimId);
+      $('progress-fill').style.transform = 'scaleX(0)';
+    }
+
     // --- Buttons ---
     $('btn-start').onclick = async () => {
       const pid = $('playlist-id').value.trim();
@@ -408,6 +451,7 @@
       e.stopPropagation();
       playing = false;
       clearTimeout(clipTimer);
+      stopProgressBar();
       player.stopVideo();
       hideAllTransitions();
       controls.classList.remove('hidden');
