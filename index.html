@@ -330,10 +330,13 @@
       if (event.data === YT.PlayerState.PLAYING) {
         const clipLen = parseInt(clipSlider.value);
 
-        // Seek to random point ONCE per video
-        if (!seekDone) {
+        // Detect live streams (duration is 0, NaN, or Infinity)
+        const duration = player.getDuration();
+        const isLive = !duration || !isFinite(duration);
+
+        // Seek to random point ONCE per video (skip for live streams)
+        if (!seekDone && !isLive) {
           seekDone = true;
-          const duration = player.getDuration();
           if (duration > clipLen + 10) {
             const maxStart = duration - clipLen - 5;
             const startAt = Math.max(5, Math.random() * maxStart);
@@ -349,13 +352,14 @@
         if ($('show-title').checked) {
           try {
             const data = player.getVideoData();
-            showStatus(data.title || 'Unknown');
+            const title = data.title || 'Unknown';
+            showStatus(isLive ? '🔴 LIVE: ' + title : title);
           } catch(e) { showStatus('Playing...'); }
         } else {
           status.classList.add('hidden');
         }
 
-        // Set timer to skip
+        // Set timer to skip (works for live streams too — just plays for clipLen then moves on)
         clipTimer = setTimeout(() => playNext(), clipLen * 1000);
 
         scheduleHideControls();
