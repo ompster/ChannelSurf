@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChannelSurf</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #player-wrap {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+    }
+    #player { width: 100%; height: 100%; }
+    #controls {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 10;
+      background: linear-gradient(transparent, rgba(0,0,0,0.85));
+      padding: 40px 20px 20px;
+      transition: opacity 0.5s;
+    }
+    #controls.hidden { opacity: 0; pointer-events: none; }
+    .row { display: flex; gap: 10px; margin-bottom: 12px; align-items: center; }
+    label { font-size: 14px; min-width: 100px; }
+    input[type="text"] {
+      flex: 1; padding: 10px 14px; border-radius: 8px;
+      border: 1px solid #444; background: #1a1a1a; color: #fff; font-size: 14px;
+    }
+    select {
+      padding: 10px 14px; border-radius: 8px;
+      border: 1px solid #444; background: #1a1a1a; color: #fff; font-size: 14px;
+      flex: 1;
+    }
+    input[type="range"] { flex: 1; accent-color: #ff4500; }
+    .range-val { min-width: 50px; text-align: right; font-size: 14px; }
+    button {
+      padding: 10px 24px; border-radius: 8px; border: none;
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s;
+    }
+    #btn-start { background: #ff4500; color: #fff; }
+    #btn-start:hover { background: #e03e00; }
+    #btn-skip, #btn-stop { background: #333; color: #fff; }
+    #btn-skip:hover, #btn-stop:hover { background: #444; }
+    #status {
+      position: fixed; top: 20px; left: 20px; z-index: 10;
+      font-size: 13px; background: rgba(0,0,0,0.6);
+      padding: 8px 14px; border-radius: 8px; transition: opacity 0.5s;
+    }
+    #status.hidden { opacity: 0; }
+
+    /* Transition overlays */
+    .transition-overlay {
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 5; pointer-events: none;
+      opacity: 0; transition: opacity 0.3s ease;
+    }
+    .transition-overlay.active { opacity: 1; }
+
+    /* Fade to black */
+    #trans-fade { background: #000; }
+
+    /* TV Static */
+    #trans-static { background: #000; }
+    #trans-static canvas { width: 100%; height: 100%; }
+
+    /* Glitch */
+    #trans-glitch { background: #000; overflow: hidden; }
+    .glitch-bar {
+      position: absolute; left: 0; width: 100%;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px
+      );
+    }
+
+    /* Channel flip — blue screen with "NO SIGNAL" */
+    #trans-channel {
+      background: #0033aa;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+    }
+    #trans-channel .no-signal {
+      font-family: 'Courier New', monospace;
+      font-size: 48px; font-weight: bold; color: #fff;
+      text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+      letter-spacing: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="player-wrap"><div id="player"></div></div>
+
+  <!-- Transition overlays -->
+  <div class="transition-overlay" id="trans-fade"></div>
+  <div class="transition-overlay" id="trans-static"><canvas id="static-canvas"></canvas></div>
+  <div class="transition-overlay" id="trans-glitch"></div>
+  <div class="transition-overlay" id="trans-channel"><div class="no-signal">NO SIGNAL</div></div>
+
+  <div id="status" class="hidden"></div>
+
+  <div id="controls">
+    <div class="row">
+      <label>Playlist ID</label>
+      <input type="text" id="playlist-id" placeholder="e.g. PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf" value="PLCgY5X6keprecXzwA9jsi92DhiNZ-_KoY" />
+    </div>
+    <div class="row">
+      <label>Clip length</label>
+      <input type="range" id="clip-length" min="10" max="300" value="45" />
+      <span class="range-val" id="clip-val">45s</span>
+    </div>
+    <div class="row">
+      <label>Transition</label>
+      <select id="transition-type">
+        <option value="static">📺 TV Static</option>
+        <option value="fade">⬛ Fade to Black</option>
+        <option value="glitch">⚡ Glitch</option>
+        <option value="channel">🔵 No Signal</option>
+        <option value="random">🎲 Random</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>Trans. time</label>
+      <input type="range" id="fade-length" min="0.5" max="5" value="1.5" step="0.5" />
+      <span class="range-val" id="fade-val">1.5s</span>
+    </div>
+    <div class="row">
+      <label>Auto-hide UI</label>
+      <input type="checkbox" id="auto-hide" checked style="width:20px;height:20px;accent-color:#ff4500" />
+    </div>
+    <div class="row">
+      <label>Show title</label>
+      <input type="checkbox" id="show-title" checked style="width:20px;height:20px;accent-color:#ff4500" />
+    </div>
+    <div class="row">
+      <button id="btn-start">▶ Start</button>
+      <button id="btn-skip" style="display:none">⏭ Skip</button>
+      <button id="btn-stop" style="display:none">⏹ Stop</button>
+    </div>
+  </div>
+
+  <script>
+    // --- State ---
+    let player = null;
+    let videoIds = [];
+    let playing = false;
+    let clipTimer = null;
+    let hideTimer = null;
+    let lastPlayed = [];
+    let seekDone = false;
+    let staticAnimId = null;
+
+    const $ = id => document.getElementById(id);
+    const status = $('status');
+    const controls = $('controls');
+
+    // --- Static canvas ---
+    const staticCanvas = $('static-canvas');
+    const staticCtx = staticCanvas.getContext('2d');
+
+    function resizeStaticCanvas() {
+      staticCanvas.width = window.innerWidth;
+      staticCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeStaticCanvas);
+    resizeStaticCanvas();
+
+    function drawStatic() {
+      const w = staticCanvas.width, h = staticCanvas.height;
+      const imageData = staticCtx.createImageData(w, h);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const v = Math.random() * 255;
+        data[i] = v;
+        data[i+1] = v;
+        data[i+2] = v;
+        data[i+3] = 255;
+      }
+      staticCtx.putImageData(imageData, 0, 0);
+      staticAnimId = requestAnimationFrame(drawStatic);
+    }
+
+    function startStatic() {
+      if (!staticAnimId) drawStatic();
+    }
+    function stopStatic() {
+      if (staticAnimId) { cancelAnimationFrame(staticAnimId); staticAnimId = null; }
+    }
+
+    // --- Glitch effect ---
+    function startGlitch() {
+      const el = $('trans-glitch');
+      el.innerHTML = '';
+      for (let i = 0; i < 20; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'glitch-bar';
+        const h = Math.random() * 40 + 5;
+        bar.style.height = h + 'px';
+        bar.style.top = (Math.random() * 100) + '%';
+        bar.style.background = `rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},${Math.random()*0.3+0.1})`;
+        bar.style.transform = `translateX(${(Math.random()-0.5)*40}px)`;
+        el.appendChild(bar);
+      }
+    }
+
+    // --- Transitions ---
+    const overlays = ['trans-fade','trans-static','trans-glitch','trans-channel'];
+
+    function hideAllTransitions() {
+      overlays.forEach(id => $( id).classList.remove('active'));
+      stopStatic();
+    }
+
+    function getTransitionType() {
+      const val = $('transition-type').value;
+      if (val === 'random') {
+        const types = ['static','fade','glitch','channel'];
+        return types[Math.floor(Math.random() * types.length)];
+      }
+      return val;
+    }
+
+    function showTransition(type) {
+      hideAllTransitions();
+      if (type === 'static') { startStatic(); }
+      if (type === 'glitch') { startGlitch(); }
+      $('trans-' + type).classList.add('active');
+    }
+
+    // --- Settings ---
+    const clipSlider = $('clip-length');
+    const fadeSlider = $('fade-length');
+    clipSlider.oninput = () => $('clip-val').textContent = clipSlider.value + 's';
+    fadeSlider.oninput = () => $('fade-val').textContent = fadeSlider.value + 's';
+
+    function saveSettings() {
+      const s = {
+        playlistId: $('playlist-id').value,
+        clipLength: clipSlider.value,
+        fadeLength: fadeSlider.value,
+        transition: $('transition-type').value
+      };
+      localStorage.setItem('ambient-tv', JSON.stringify(s));
+    }
+    function loadSettings() {
+      try {
+        const s = JSON.parse(localStorage.getItem('ambient-tv'));
+        if (s) {
+          $('playlist-id').value = s.playlistId || 'PLCgY5X6keprecXzwA9jsi92DhiNZ-_KoY';
+          clipSlider.value = s.clipLength || 45;
+          fadeSlider.value = s.fadeLength || 1.5;
+          if (s.transition) $('transition-type').value = s.transition;
+          clipSlider.oninput();
+          fadeSlider.oninput();
+        }
+      } catch(e) {}
+    }
+    loadSettings();
+
+    // --- YouTube API ---
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+
+    window.onYouTubeIframeAPIReady = () => {
+      player = new YT.Player('player', {
+        playerVars: {
+          autoplay: 0, controls: 0, disablekb: 1, fs: 0,
+          modestbranding: 1, rel: 0, showinfo: 0,
+          iv_load_policy: 3, playsinline: 1
+        },
+        events: {
+          onReady: () => showStatus('ChannelSurf — hit Start'),
+          onStateChange: onPlayerState,
+          onError: () => { showStatus('Video error, skipping...'); setTimeout(playNext, 2000); }
+        }
+      });
+    };
+
+    // --- Fetch playlist ---
+    async function fetchPlaylistVideos(playlistId) {
+      showStatus('Loading playlist...');
+      return new Promise((resolve, reject) => {
+        player.cuePlaylist({ list: playlistId, listType: 'playlist' });
+        const check = setInterval(() => {
+          const list = player.getPlaylist();
+          if (list && list.length > 0) { clearInterval(check); resolve(list); }
+        }, 500);
+        setTimeout(() => { clearInterval(check); reject('Timeout loading playlist'); }, 15000);
+      });
+    }
+
+    // --- Playback ---
+    function pickRandom() {
+      const available = videoIds.filter(id => !lastPlayed.includes(id));
+      const pool = available.length > 0 ? available : videoIds;
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      lastPlayed.push(pick);
+      if (lastPlayed.length > Math.min(10, Math.floor(videoIds.length * 0.5))) lastPlayed.shift();
+      return pick;
+    }
+
+    function playNext() {
+      if (!playing) return;
+      clearTimeout(clipTimer);
+
+      const videoId = pickRandom();
+      const fadeSec = parseFloat(fadeSlider.value);
+      const transType = getTransitionType();
+
+      // Show transition
+      showTransition(transType);
+
+      setTimeout(() => {
+        seekDone = false;
+        player.loadVideoById(videoId);
+      }, fadeSec * 1000);
+    }
+
+    function onPlayerState(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+        const clipLen = parseInt(clipSlider.value);
+
+        // Seek to random point ONCE per video
+        if (!seekDone) {
+          seekDone = true;
+          const duration = player.getDuration();
+          if (duration > clipLen + 10) {
+            const maxStart = duration - clipLen - 5;
+            const startAt = Math.max(5, Math.random() * maxStart);
+            player.seekTo(startAt, true);
+            return;
+          }
+        }
+
+        // Hide transition
+        setTimeout(() => hideAllTransitions(), 300);
+
+        // Show video title
+        if ($('show-title').checked) {
+          try {
+            const data = player.getVideoData();
+            showStatus(data.title || 'Unknown');
+          } catch(e) { showStatus('Playing...'); }
+        } else {
+          status.classList.add('hidden');
+        }
+
+        // Set timer to skip
+        clipTimer = setTimeout(() => playNext(), clipLen * 1000);
+
+        scheduleHideControls();
+      } else if (event.data === YT.PlayerState.ENDED) {
+        playNext();
+      }
+    }
+
+    // --- Controls visibility ---
+    function scheduleHideControls() {
+      clearTimeout(hideTimer);
+      if (!$('auto-hide').checked) {
+        controls.classList.remove('hidden');
+        status.classList.remove('hidden');
+      }
+      hideTimer = setTimeout(() => {
+        if (playing) { controls.classList.add('hidden'); status.classList.add('hidden'); }
+      }, 4000);
+    }
+
+    document.body.addEventListener('click', () => {
+      if (playing) { controls.classList.remove('hidden'); status.classList.remove('hidden'); scheduleHideControls(); }
+    });
+
+    function showStatus(msg) { status.textContent = msg; status.classList.remove('hidden'); }
+
+    // --- Buttons ---
+    $('btn-start').onclick = async () => {
+      const pid = $('playlist-id').value.trim();
+      if (!pid) { showStatus('Enter a playlist ID!'); return; }
+      saveSettings();
+      try {
+        videoIds = await fetchPlaylistVideos(pid);
+        showStatus(`Loaded ${videoIds.length} videos`);
+        playing = true;
+        $('btn-start').style.display = 'none';
+        $('btn-skip').style.display = '';
+        $('btn-stop').style.display = '';
+        playNext();
+      } catch(e) { showStatus('Failed: ' + e); }
+    };
+
+    $('btn-skip').onclick = (e) => { e.stopPropagation(); playNext(); };
+
+    $('btn-stop').onclick = (e) => {
+      e.stopPropagation();
+      playing = false;
+      clearTimeout(clipTimer);
+      player.stopVideo();
+      hideAllTransitions();
+      controls.classList.remove('hidden');
+      status.classList.remove('hidden');
+      $('btn-start').style.display = '';
+      $('btn-skip').style.display = 'none';
+      $('btn-stop').style.display = 'none';
+      showStatus('Stopped');
+    };
+  </script>
+</body>
+</html>
