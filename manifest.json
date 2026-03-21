@@ -1,0 +1,14 @@
+{
+  "name": "ChannelSurf",
+  "short_name": "ChannelSurf",
+  "description": "YouTube playlist shuffler with retro TV transitions",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#ff4500",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
