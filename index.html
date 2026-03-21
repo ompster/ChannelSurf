@@ -14,67 +14,58 @@
       overflow: hidden;
     }
     #player-wrap {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 1;
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100vh; z-index: 1;
     }
     #player { width: 100%; height: 100%; }
     #controls {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      z-index: 10;
-      background: linear-gradient(transparent, rgba(0,0,0,0.85));
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+      background: linear-gradient(transparent, rgba(0,0,0,0.9));
       padding: 40px 20px 20px;
       transition: opacity 0.5s;
+      max-height: 80vh; overflow-y: auto;
     }
     #controls.hidden { opacity: 0; pointer-events: none; }
-    .row { display: flex; gap: 10px; margin-bottom: 12px; align-items: center; }
+    .row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
     label { font-size: 14px; min-width: 100px; }
     input[type="text"] {
-      flex: 1; padding: 10px 14px; border-radius: 8px;
+      flex: 1; padding: 8px 12px; border-radius: 8px;
       border: 1px solid #444; background: #1a1a1a; color: #fff; font-size: 14px;
     }
     select {
-      padding: 10px 14px; border-radius: 8px;
-      border: 1px solid #444; background: #1a1a1a; color: #fff; font-size: 14px;
-      flex: 1;
+      padding: 8px 12px; border-radius: 8px;
+      border: 1px solid #444; background: #1a1a1a; color: #fff; font-size: 14px; flex: 1;
     }
     input[type="range"] { flex: 1; accent-color: #ff4500; }
     .range-val { min-width: 50px; text-align: right; font-size: 14px; }
     button {
-      padding: 10px 24px; border-radius: 8px; border: none;
+      padding: 8px 20px; border-radius: 8px; border: none;
       font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s;
     }
     #btn-start { background: #ff4500; color: #fff; }
     #btn-start:hover { background: #e03e00; }
     #btn-skip, #btn-stop { background: #333; color: #fff; }
     #btn-skip:hover, #btn-stop:hover { background: #444; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; background: #333; color: #fff; border-radius: 6px; border: none; cursor: pointer; }
+    .btn-sm:hover { background: #444; }
+    .btn-danger { background: #600; }
+    .btn-danger:hover { background: #900; }
     #status {
       position: fixed; top: 20px; left: 20px; z-index: 10;
       font-size: 13px; background: rgba(0,0,0,0.6);
       padding: 8px 14px; border-radius: 8px; transition: opacity 0.5s;
     }
     #status.hidden { opacity: 0; }
-
-    /* Progress bar */
     #progress-bar {
-      position: fixed;
-      bottom: 0; left: 0;
-      width: 100vw; height: 3px;
-      z-index: 8;
+      position: fixed; bottom: 0; left: 0;
+      width: 100vw; height: 3px; z-index: 8;
       background: rgba(255,255,255,0.1);
     }
     #progress-fill {
-      height: 100%;
-      width: 100%;
+      height: 100%; width: 100%;
       background: rgba(255,255,255,0.3);
-      transform-origin: left;
-      transition: none;
+      transform-origin: left; transition: none;
     }
-
-    /* Transition overlays */
     .transition-overlay {
       position: fixed; top: 0; left: 0;
       width: 100vw; height: 100vh;
@@ -82,24 +73,13 @@
       opacity: 0; transition: opacity 0.3s ease;
     }
     .transition-overlay.active { opacity: 1; }
-
-    /* Fade to black */
     #trans-fade { background: #000; }
-
-    /* TV Static */
     #trans-static { background: #000; }
     #trans-static canvas { width: 100%; height: 100%; }
-
-    /* Glitch */
     #trans-glitch { background: #000; overflow: hidden; }
     .glitch-bar {
       position: absolute; left: 0; width: 100%;
-      background: repeating-linear-gradient(
-        0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px
-      );
     }
-
-    /* Channel flip — blue screen with "NO SIGNAL" */
     #trans-channel {
       background: #0033aa;
       display: flex; align-items: center; justify-content: center;
@@ -111,25 +91,43 @@
       text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
       letter-spacing: 8px;
     }
+    /* Categories */
+    #categories { margin-bottom: 10px; }
+    .cat-row {
+      display: flex; gap: 8px; align-items: center; margin-bottom: 6px;
+      padding: 6px 10px; background: rgba(255,255,255,0.05); border-radius: 8px;
+    }
+    .cat-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: #ff4500; flex-shrink: 0; }
+    .cat-name {
+      font-size: 14px; font-weight: 600; min-width: 80px;
+      color: #ff4500; cursor: default;
+    }
+    .cat-id { font-size: 12px; color: #888; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cat-count { font-size: 11px; color: #666; min-width: 40px; text-align: right; }
+    #add-cat-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    #add-cat-row input { flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid #444; background: #1a1a1a; color: #fff; font-size: 13px; }
+    .section-label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
   </style>
 </head>
 <body>
   <div id="player-wrap"><div id="player"></div></div>
-
-  <!-- Transition overlays -->
   <div class="transition-overlay" id="trans-fade"></div>
   <div class="transition-overlay" id="trans-static"><canvas id="static-canvas"></canvas></div>
   <div class="transition-overlay" id="trans-glitch"></div>
   <div class="transition-overlay" id="trans-channel"><div class="no-signal">NO SIGNAL</div></div>
-
   <div id="status" class="hidden"></div>
   <div id="progress-bar"><div id="progress-fill"></div></div>
 
   <div id="controls">
-    <div class="row">
-      <label>Playlist ID</label>
-      <input type="text" id="playlist-id" placeholder="e.g. PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf" value="PLCgY5X6keprecXzwA9jsi92DhiNZ-_KoY" />
+    <div class="section-label">Categories</div>
+    <div id="categories"></div>
+    <div id="add-cat-row">
+      <input type="text" id="new-cat-name" placeholder="Category name" />
+      <input type="text" id="new-cat-id" placeholder="Playlist ID" />
+      <button class="btn-sm" onclick="addCategory()">+ Add</button>
     </div>
+
+    <div class="section-label" style="margin-top:10px">Settings</div>
     <div class="row">
       <label>Clip length</label>
       <input type="range" id="clip-length" min="10" max="300" value="45" />
@@ -178,14 +176,71 @@
     let progressAnimId = null;
     let clipStartTime = 0;
 
+    // Categories: [{name, playlistId, enabled, videos:[]}]
+    let categories = [];
+
     const $ = id => document.getElementById(id);
     const status = $('status');
     const controls = $('controls');
 
+    // --- Default categories ---
+    const defaultCategories = [
+      { name: '🎵 Synthwave', playlistId: 'PLCgY5X6keprecXzwA9jsi92DhiNZ-_KoY', enabled: true, videos: [] },
+    ];
+
+    // --- Category management ---
+    function renderCategories() {
+      const el = $('categories');
+      el.innerHTML = '';
+      categories.forEach((cat, i) => {
+        const row = document.createElement('div');
+        row.className = 'cat-row';
+        row.innerHTML = `
+          <input type="checkbox" ${cat.enabled ? 'checked' : ''} onchange="toggleCategory(${i}, this.checked)" />
+          <span class="cat-name">${cat.name}</span>
+          <span class="cat-id">${cat.playlistId}</span>
+          <span class="cat-count" id="cat-count-${i}">${cat.videos.length ? cat.videos.length + ' vids' : ''}</span>
+          <button class="btn-sm btn-danger" onclick="removeCategory(${i})">✕</button>
+        `;
+        el.appendChild(row);
+      });
+    }
+
+    function addCategory() {
+      const name = $('new-cat-name').value.trim();
+      const id = $('new-cat-id').value.trim();
+      if (!name || !id) return;
+      categories.push({ name, playlistId: id, enabled: true, videos: [] });
+      $('new-cat-name').value = '';
+      $('new-cat-id').value = '';
+      renderCategories();
+      saveSettings();
+    }
+
+    function removeCategory(i) {
+      categories.splice(i, 1);
+      renderCategories();
+      saveSettings();
+    }
+
+    function toggleCategory(i, checked) {
+      categories[i].enabled = checked;
+      // Rebuild active video pool if playing
+      if (playing) buildVideoPool();
+      saveSettings();
+    }
+
+    function buildVideoPool() {
+      videoIds = [];
+      categories.forEach(cat => {
+        if (cat.enabled) videoIds.push(...cat.videos);
+      });
+      lastPlayed = lastPlayed.filter(id => videoIds.includes(id));
+    }
+
     // --- Static canvas ---
     const staticCanvas = $('static-canvas');
     const staticCtx = staticCanvas.getContext('2d');
-
     function resizeStaticCanvas() {
       staticCanvas.width = window.innerWidth;
       staticCanvas.height = window.innerHeight;
@@ -199,31 +254,22 @@
       const data = imageData.data;
       for (let i = 0; i < data.length; i += 4) {
         const v = Math.random() * 255;
-        data[i] = v;
-        data[i+1] = v;
-        data[i+2] = v;
-        data[i+3] = 255;
+        data[i] = v; data[i+1] = v; data[i+2] = v; data[i+3] = 255;
       }
       staticCtx.putImageData(imageData, 0, 0);
       staticAnimId = requestAnimationFrame(drawStatic);
     }
+    function startStatic() { if (!staticAnimId) drawStatic(); }
+    function stopStatic() { if (staticAnimId) { cancelAnimationFrame(staticAnimId); staticAnimId = null; } }
 
-    function startStatic() {
-      if (!staticAnimId) drawStatic();
-    }
-    function stopStatic() {
-      if (staticAnimId) { cancelAnimationFrame(staticAnimId); staticAnimId = null; }
-    }
-
-    // --- Glitch effect ---
+    // --- Glitch ---
     function startGlitch() {
       const el = $('trans-glitch');
       el.innerHTML = '';
       for (let i = 0; i < 20; i++) {
         const bar = document.createElement('div');
         bar.className = 'glitch-bar';
-        const h = Math.random() * 40 + 5;
-        bar.style.height = h + 'px';
+        bar.style.height = (Math.random() * 40 + 5) + 'px';
         bar.style.top = (Math.random() * 100) + '%';
         bar.style.background = `rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},${Math.random()*0.3+0.1})`;
         bar.style.transform = `translateX(${(Math.random()-0.5)*40}px)`;
@@ -233,12 +279,10 @@
 
     // --- Transitions ---
     const overlays = ['trans-fade','trans-static','trans-glitch','trans-channel'];
-
     function hideAllTransitions() {
-      overlays.forEach(id => $( id).classList.remove('active'));
+      overlays.forEach(id => $(id).classList.remove('active'));
       stopStatic();
     }
-
     function getTransitionType() {
       const val = $('transition-type').value;
       if (val === 'random') {
@@ -247,11 +291,10 @@
       }
       return val;
     }
-
     function showTransition(type) {
       hideAllTransitions();
-      if (type === 'static') { startStatic(); }
-      if (type === 'glitch') { startGlitch(); }
+      if (type === 'static') startStatic();
+      if (type === 'glitch') startGlitch();
       $('trans-' + type).classList.add('active');
     }
 
@@ -263,25 +306,35 @@
 
     function saveSettings() {
       const s = {
-        playlistId: $('playlist-id').value,
+        categories: categories.map(c => ({ name: c.name, playlistId: c.playlistId, enabled: c.enabled })),
         clipLength: clipSlider.value,
         fadeLength: fadeSlider.value,
-        transition: $('transition-type').value
+        transition: $('transition-type').value,
+        autoHide: $('auto-hide').checked,
+        showTitle: $('show-title').checked
       };
-      localStorage.setItem('ambient-tv', JSON.stringify(s));
+      localStorage.setItem('channelsurf', JSON.stringify(s));
     }
+
     function loadSettings() {
       try {
-        const s = JSON.parse(localStorage.getItem('ambient-tv'));
-        if (s) {
-          $('playlist-id').value = s.playlistId || 'PLCgY5X6keprecXzwA9jsi92DhiNZ-_KoY';
+        const s = JSON.parse(localStorage.getItem('channelsurf'));
+        if (s && s.categories && s.categories.length > 0) {
+          categories = s.categories.map(c => ({ ...c, videos: [] }));
           clipSlider.value = s.clipLength || 45;
           fadeSlider.value = s.fadeLength || 1.5;
           if (s.transition) $('transition-type').value = s.transition;
-          clipSlider.oninput();
-          fadeSlider.oninput();
+          if (s.autoHide !== undefined) $('auto-hide').checked = s.autoHide;
+          if (s.showTitle !== undefined) $('show-title').checked = s.showTitle;
+        } else {
+          categories = defaultCategories.map(c => ({ ...c }));
         }
-      } catch(e) {}
+        clipSlider.oninput();
+        fadeSlider.oninput();
+      } catch(e) {
+        categories = defaultCategories.map(c => ({ ...c }));
+      }
+      renderCategories();
     }
     loadSettings();
 
@@ -305,21 +358,45 @@
       });
     };
 
-    // --- Fetch playlist ---
+    // --- Fetch playlist videos ---
     async function fetchPlaylistVideos(playlistId) {
-      showStatus('Loading playlist...');
       return new Promise((resolve, reject) => {
         player.cuePlaylist({ list: playlistId, listType: 'playlist' });
         const check = setInterval(() => {
           const list = player.getPlaylist();
           if (list && list.length > 0) { clearInterval(check); resolve(list); }
         }, 500);
-        setTimeout(() => { clearInterval(check); reject('Timeout loading playlist'); }, 15000);
+        setTimeout(() => { clearInterval(check); reject('Timeout'); }, 15000);
       });
+    }
+
+    async function loadAllCategories() {
+      const enabled = categories.filter(c => c.enabled);
+      if (enabled.length === 0) { showStatus('No categories enabled!'); return false; }
+
+      for (let i = 0; i < enabled.length; i++) {
+        const cat = enabled[i];
+        showStatus(`Loading ${cat.name}... (${i+1}/${enabled.length})`);
+        try {
+          cat.videos = await fetchPlaylistVideos(cat.playlistId);
+          // Update count in UI
+          const idx = categories.indexOf(cat);
+          const countEl = $('cat-count-' + idx);
+          if (countEl) countEl.textContent = cat.videos.length + ' vids';
+        } catch(e) {
+          cat.videos = [];
+          const idx = categories.indexOf(cat);
+          const countEl = $('cat-count-' + idx);
+          if (countEl) countEl.textContent = 'error';
+        }
+      }
+      buildVideoPool();
+      return videoIds.length > 0;
     }
 
     // --- Playback ---
     function pickRandom() {
+      if (videoIds.length === 0) return null;
       const available = videoIds.filter(id => !lastPlayed.includes(id));
       const pool = available.length > 0 ? available : videoIds;
       const pick = pool[Math.floor(Math.random() * pool.length)];
@@ -333,10 +410,10 @@
       clearTimeout(clipTimer);
 
       const videoId = pickRandom();
+      if (!videoId) { showStatus('No videos available'); return; }
+
       const fadeSec = parseFloat(fadeSlider.value);
       const transType = getTransitionType();
-
-      // Show transition
       showTransition(transType);
 
       setTimeout(() => {
@@ -348,12 +425,9 @@
     function onPlayerState(event) {
       if (event.data === YT.PlayerState.PLAYING) {
         const clipLen = parseInt(clipSlider.value);
-
-        // Detect live streams (duration is 0, NaN, or Infinity)
         const duration = player.getDuration();
         const isLive = !duration || !isFinite(duration);
 
-        // Seek to random point ONCE per video (skip for live streams)
         if (!seekDone && !isLive) {
           seekDone = true;
           if (duration > clipLen + 10) {
@@ -364,27 +438,27 @@
           }
         }
 
-        // Hide transition
         setTimeout(() => hideAllTransitions(), 300);
 
-        // Show video title
         if ($('show-title').checked) {
           try {
             const data = player.getVideoData();
             const title = data.title || 'Unknown';
-            showStatus(isLive ? '🔴 LIVE: ' + title : title);
+            // Find which category this video belongs to
+            let catName = '';
+            for (const cat of categories) {
+              if (cat.videos.includes(data.video_id)) { catName = cat.name; break; }
+            }
+            const prefix = isLive ? '🔴 LIVE' : catName;
+            showStatus(prefix ? prefix + ' · ' + title : title);
           } catch(e) { showStatus('Playing...'); }
         } else {
           status.classList.add('hidden');
         }
 
-        // Start progress bar countdown
         clipStartTime = Date.now();
         startProgressBar(clipLen);
-
-        // Set timer to skip (works for live streams too — just plays for clipLen then moves on)
         clipTimer = setTimeout(() => playNext(), clipLen * 1000);
-
         scheduleHideControls();
       } else if (event.data === YT.PlayerState.ENDED) {
         playNext();
@@ -403,8 +477,12 @@
       }, 4000);
     }
 
-    document.body.addEventListener('click', () => {
-      if (playing) { controls.classList.remove('hidden'); status.classList.remove('hidden'); scheduleHideControls(); }
+    document.body.addEventListener('click', (e) => {
+      if (playing && !e.target.closest('#controls')) {
+        controls.classList.remove('hidden');
+        status.classList.remove('hidden');
+        scheduleHideControls();
+      }
     });
 
     function showStatus(msg) { status.textContent = msg; status.classList.remove('hidden'); }
@@ -418,9 +496,7 @@
         const elapsed = Date.now() - clipStartTime;
         const remaining = Math.max(0, 1 - (elapsed / totalMs));
         fill.style.transform = 'scaleX(' + remaining + ')';
-        if (remaining > 0 && playing) {
-          progressAnimId = requestAnimationFrame(tick);
-        }
+        if (remaining > 0 && playing) progressAnimId = requestAnimationFrame(tick);
       }
       tick();
     }
@@ -431,18 +507,15 @@
 
     // --- Buttons ---
     $('btn-start').onclick = async () => {
-      const pid = $('playlist-id').value.trim();
-      if (!pid) { showStatus('Enter a playlist ID!'); return; }
       saveSettings();
-      try {
-        videoIds = await fetchPlaylistVideos(pid);
-        showStatus(`Loaded ${videoIds.length} videos`);
-        playing = true;
-        $('btn-start').style.display = 'none';
-        $('btn-skip').style.display = '';
-        $('btn-stop').style.display = '';
-        playNext();
-      } catch(e) { showStatus('Failed: ' + e); }
+      const ok = await loadAllCategories();
+      if (!ok) { showStatus('No videos found in enabled categories'); return; }
+      showStatus(`Loaded ${videoIds.length} videos from ${categories.filter(c=>c.enabled&&c.videos.length).length} categories`);
+      playing = true;
+      $('btn-start').style.display = 'none';
+      $('btn-skip').style.display = '';
+      $('btn-stop').style.display = '';
+      playNext();
     };
 
     $('btn-skip').onclick = (e) => { e.stopPropagation(); playNext(); };
