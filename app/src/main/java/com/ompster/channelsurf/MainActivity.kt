@@ -132,9 +132,9 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = WebViewClient()
 
         // Buttons
-        btnStart.setOnClickListener { onStart() }
+        btnStart.setOnClickListener { onStartSurfing() }
         btnSkip.setOnClickListener { onSkip() }
-        btnStop.setOnClickListener { onStop() }
+        btnStop.setOnClickListener { onStopSurfing() }
 
         // Load saved settings
         loadSettings()
@@ -192,7 +192,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --- Actions ---
-    private fun onStart() {
+    private fun onStartSurfing() {
         val playlistId = playlistInput.text.toString().trim()
         if (playlistId.isEmpty()) {
             playlistInput.error = "Enter a playlist ID"
@@ -217,7 +217,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun onStop() {
+    private fun onStopSurfing() {
         playing = false
         updateButtons()
 
