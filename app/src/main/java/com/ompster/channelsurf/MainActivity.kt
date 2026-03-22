@@ -240,9 +240,10 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     private fun showWebView() {
         webView.visibility = View.VISIBLE
-        // Inject settings into localStorage before loading
+        controlsLayout.visibility = View.GONE
+        // YouTube IFrame API requires HTTP, can't run from file://
         val settings = buildSettingsJson()
-        webView.loadUrl("file:///android_asset/index.html")
+        webView.loadUrl("https://ompster.github.io/ChannelSurf/")
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
