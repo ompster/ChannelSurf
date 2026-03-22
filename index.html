@@ -136,6 +136,56 @@
     .btn-sm.danger:hover { background: #900; }
     #btn-edit-cats { font-size: 11px; color: #888; cursor: pointer; text-decoration: underline; margin-left: 8px; }
     #scan-progress { font-size: 12px; color: #888; margin-top: 4px; }
+    /* --- CRT TV Overlay --- */
+    #crt-overlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      z-index: 6; pointer-events: none; display: none;
+    }
+    #crt-overlay.active { display: block; }
+    /* Scanlines */
+    #crt-scanlines {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 2px,
+        rgba(0,0,0,0.15) 2px,
+        rgba(0,0,0,0.15) 4px
+      );
+    }
+    /* Screen curvature vignette */
+    #crt-vignette {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+    }
+    /* TV bezel frame */
+    #crt-bezel {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      border: 12px solid #1a1a1a;
+      border-radius: 20px;
+      box-shadow:
+        inset 0 0 80px rgba(0,0,0,0.5),
+        inset 0 0 20px rgba(0,0,0,0.3),
+        0 0 30px rgba(0,0,0,0.8);
+    }
+    /* Glare reflection */
+    #crt-glare {
+      position: absolute; top: 5%; left: 5%; width: 40%; height: 30%;
+      background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 60%);
+      border-radius: 50%;
+    }
+    /* Channel number display */
+    #channel-num {
+      position: fixed; top: 30px; right: 40px; z-index: 9;
+      font-family: 'Courier New', monospace;
+      font-size: 42px; font-weight: bold;
+      color: #0f0;
+      text-shadow: 0 0 8px rgba(0,255,0,0.6), 2px 2px 0 rgba(0,0,0,0.8);
+      opacity: 0; transition: opacity 0.4s;
+      pointer-events: none; letter-spacing: 3px;
+    }
+    #channel-num.visible { opacity: 1; }
+    #channel-num.fade-out { opacity: 0; transition: opacity 1.5s ease 3s; }
   </style>
 </head>
 <body>
@@ -149,6 +199,14 @@
   <div class="transition-overlay" id="trans-crt"><div class="crt-line"></div><div class="crt-dot"></div></div>
   <div class="transition-overlay" id="trans-flash"></div>
   <div class="transition-overlay" id="trans-scan"><canvas id="scan-canvas"></canvas><div class="scan-num">CH 01</div></div>
+  <!-- CRT TV Overlay -->
+  <div id="crt-overlay">
+    <div id="crt-scanlines"></div>
+    <div id="crt-vignette"></div>
+    <div id="crt-bezel"></div>
+    <div id="crt-glare"></div>
+  </div>
+  <div id="channel-num">CH 01</div>
   <div id="status" class="hidden"></div>
   <div id="progress-bar"><div id="progress-fill"></div></div>
 
@@ -208,6 +266,14 @@
       <input type="checkbox" id="show-title" checked style="width:20px;height:20px;accent-color:#ff4500" />
     </div>
     <div class="row">
+      <label>CRT overlay</label>
+      <input type="checkbox" id="crt-mode" style="width:20px;height:20px;accent-color:#ff4500" />
+    </div>
+    <div class="row">
+      <label>Channel #</label>
+      <input type="checkbox" id="show-channel" checked style="width:20px;height:20px;accent-color:#ff4500" />
+    </div>
+    <div class="row">
       <button id="btn-start">▶ Start</button>
       <button id="btn-skip" style="display:none">⏭ Skip</button>
       <button id="btn-stop" style="display:none">⏹ Stop</button>
@@ -233,6 +299,8 @@
     let progressAnimId = null;
     let clipStartTime = 0;
     let scanning = false;
+    let channelNumber = 0;
+    let channelFadeTimer = null;
 
     const $ = id => document.getElementById(id);
     const status = $('status');
@@ -631,7 +699,9 @@
         fadeLength: fadeSlider.value,
         transition: $('transition-type').value,
         autoHide: $('auto-hide').checked,
-        showTitle: $('show-title').checked
+        showTitle: $('show-title').checked,
+        crtMode: $('crt-mode').checked,
+        showChannel: $('show-channel').checked
       };
       localStorage.setItem('channelsurf', JSON.stringify(s));
     }
@@ -646,6 +716,8 @@
           if (s.transition) $('transition-type').value = s.transition;
           if (s.autoHide !== undefined) $('auto-hide').checked = s.autoHide;
           if (s.showTitle !== undefined) $('show-title').checked = s.showTitle;
+          if (s.crtMode !== undefined) { $('crt-mode').checked = s.crtMode; $('crt-overlay').classList.toggle('active', s.crtMode); }
+          if (s.showChannel !== undefined) $('show-channel').checked = s.showChannel;
         }
         clipSlider.oninput(); fadeSlider.oninput();
       } catch(e) {}
@@ -699,6 +771,7 @@
       if (!videoId) { showStatus('No videos in active categories'); return; }
       const fadeSec = parseFloat(fadeSlider.value);
       showTransition(getTransitionType());
+      showChannelNumber();
       setTimeout(() => { seekDone = false; player.loadVideoById(videoId); }, fadeSec * 1000);
     }
 
@@ -753,6 +826,30 @@
     });
     function showStatus(msg) { status.textContent = msg; status.classList.remove('hidden'); }
 
+    // --- CRT Overlay ---
+    $('crt-mode').onchange = () => {
+      $('crt-overlay').classList.toggle('active', $('crt-mode').checked);
+      saveSettings();
+    };
+    $('show-channel').onchange = () => {
+      if (!$('show-channel').checked) $('channel-num').classList.remove('visible');
+      saveSettings();
+    };
+
+    function showChannelNumber() {
+      if (!$('show-channel').checked) return;
+      channelNumber++;
+      const el = $('channel-num');
+      el.textContent = 'CH ' + String(channelNumber).padStart(2, '0');
+      el.classList.remove('fade-out');
+      el.classList.add('visible');
+      clearTimeout(channelFadeTimer);
+      // Show for a moment then fade out
+      channelFadeTimer = setTimeout(() => {
+        el.classList.add('fade-out');
+      }, 100);
+    }
+
     // --- Progress bar ---
     function startProgressBar(clipLen) {
       cancelAnimationFrame(progressAnimId);
@@ -795,6 +892,7 @@
       e.stopPropagation(); playing = false;
       clearTimeout(clipTimer); stopProgressBar();
       player.stopVideo(); hideAllTransitions();
+      channelNumber = 0; $('channel-num').classList.remove('visible', 'fade-out');
       controls.classList.remove('hidden'); status.classList.remove('hidden');
       $('btn-start').style.display = ''; $('btn-skip').style.display = 'none'; $('btn-stop').style.display = 'none';
       showStatus('Stopped');
