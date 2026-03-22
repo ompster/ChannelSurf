@@ -313,6 +313,7 @@
     let scanning = false;
     let channelNumber = 0;
     let channelFadeTimer = null;
+    let transitionSafetyTimer = null;
 
     const $ = id => document.getElementById(id);
     const status = $('status');
@@ -784,6 +785,9 @@
       const fadeSec = parseFloat(fadeSlider.value);
       showTransition(getTransitionType());
       showChannelNumber();
+      // Safety: force-hide transition after fade + 8s max (in case PLAYING event doesn't fire)
+      clearTimeout(transitionSafetyTimer);
+      transitionSafetyTimer = setTimeout(() => hideAllTransitions(), (fadeSec + 8) * 1000);
       setTimeout(() => { seekDone = false; player.loadVideoById(videoId); }, fadeSec * 1000);
     }
 
@@ -803,6 +807,7 @@
           }
         }
 
+        clearTimeout(transitionSafetyTimer);
         setTimeout(() => hideAllTransitions(), 300);
 
         if ($('show-title').checked) {
@@ -821,6 +826,10 @@
         clipTimer = setTimeout(() => playNext(), clipLen * 1000);
         scheduleHideControls();
       } else if (event.data === YT.PlayerState.ENDED) { playNext(); }
+        else if (event.data === YT.PlayerState.BUFFERING && seekDone) {
+        // Video is buffering after seek — safe to clear transition
+        setTimeout(() => hideAllTransitions(), 500);
+      }
     }
 
     // --- Controls ---

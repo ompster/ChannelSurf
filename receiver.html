@@ -164,6 +164,7 @@
     let seekDone = false;
     let channelNumber = 0;
     let channelFadeTimer = null;
+    let transitionSafetyTimer = null;
     let clipStartTime = 0;
     let progressAnimId = null;
     let staticAnimId = null, vhsAnimId = null, pixelAnimId = null, scanAnimId = null, scanNumInterval = null;
@@ -283,6 +284,8 @@
       const fadeSec = settings.fadeLength;
       showTransition(getTransitionType());
       showChannelNumber();
+      clearTimeout(transitionSafetyTimer);
+      transitionSafetyTimer = setTimeout(() => hideAllTransitions(), (fadeSec + 8) * 1000);
       setTimeout(() => { seekDone = false; player.loadVideoById(videoId); }, fadeSec * 1000);
     }
 
@@ -301,6 +304,7 @@
           }
         }
 
+        clearTimeout(transitionSafetyTimer);
         setTimeout(() => hideAllTransitions(), 300);
 
         if (settings.showTitle) {
@@ -314,6 +318,9 @@
         startProgressBar(clipLen);
         clipTimer = setTimeout(() => playNext(), clipLen * 1000);
       } else if (event.data === YT.PlayerState.ENDED) { playNext(); }
+        else if (event.data === YT.PlayerState.BUFFERING && seekDone) {
+        setTimeout(() => hideAllTransitions(), 500);
+      }
     }
 
     // --- Channel Number ---
