@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>ChannelSurf</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="ChannelSurf">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000; color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      height: 100vh; overflow: hidden;
+    }
+    #player-wrap { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+    #player { width: 100%; height: 100%; }
+    #controls {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+      background: linear-gradient(transparent, rgba(0,0,0,0.92));
+      padding: 40px 20px 20px; transition: opacity 0.5s;
+      max-height: 85vh; overflow-y: auto;
+    }
+    #controls.hidden { opacity: 0; pointer-events: none; }
+    .row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+    label { font-size: 14px; min-width: 100px; }
+    input[type="text"] {
+      flex: 1; padding: 8px 12px; border-radius: 8px;
+      border: 1px solid #444; background: #1a1a1a; color: #fff; font-size: 14px;
+    }
+    select {
+      padding: 8px 12px; border-radius: 8px;
+      border: 1px solid #444; background: #1a1a1a; color: #fff; font-size: 14px; flex: 1;
+    }
+    input[type="range"] { flex: 1; accent-color: #ff4500; }
+    .range-val { min-width: 50px; text-align: right; font-size: 14px; }
+    button {
+      padding: 8px 20px; border-radius: 8px; border: none;
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s;
+    }
+    #btn-start { background: #ff4500; color: #fff; }
+    #btn-start:hover { background: #e03e00; }
+    #btn-skip, #btn-stop { background: #333; color: #fff; }
+    #btn-skip:hover, #btn-stop:hover { background: #444; }
+    #status {
+      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); z-index: 10;
+      font-size: 14px; background: rgba(0,0,0,0.6);
+      padding: 8px 18px; border-radius: 8px; transition: opacity 0.5s;
+      max-width: 80vw; text-align: center; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    #status.hidden { opacity: 0; }
+    #progress-bar { position: fixed; bottom: 0; left: 0; width: 100vw; height: 3px; z-index: 8; background: rgba(255,255,255,0.1); }
+    #progress-fill { height: 100%; width: 100%; background: rgba(255,255,255,0.3); transform-origin: left; transition: none; }
+    .transition-overlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      z-index: 5; pointer-events: none; opacity: 0; transition: opacity 0.3s ease;
+    }
+    .transition-overlay.active { opacity: 1; }
+    #trans-fade { background: #000; }
+    #trans-static { background: #000; }
+    #trans-static canvas { width: 100%; height: 100%; }
+    #trans-glitch { background: #000; overflow: hidden; }
+    .glitch-bar { position: absolute; left: 0; width: 100%; }
+    #trans-channel {
+      background: #0033aa; display: flex; align-items: center; justify-content: center; flex-direction: column;
+    }
+    #trans-channel .no-signal {
+      font-family: 'Courier New', monospace; font-size: 48px; font-weight: bold; color: #fff;
+      text-shadow: 2px 2px 0 rgba(0,0,0,0.5); letter-spacing: 8px;
+    }
+    /* VHS Tracking */
+    #trans-vhs { background: #000; overflow: hidden; }
+    #trans-vhs canvas { width: 100%; height: 100%; }
+    /* Pixel Dissolve */
+    #trans-pixel { background: #000; }
+    #trans-pixel canvas { width: 100%; height: 100%; }
+    /* CRT Power Off */
+    #trans-crt { background: #000; display: flex; align-items: center; justify-content: center; }
+    #trans-crt .crt-line {
+      width: 100%; height: 2px; background: #fff;
+      box-shadow: 0 0 20px 8px rgba(255,255,255,0.5);
+      transition: all 0.4s ease-in;
+    }
+    #trans-crt .crt-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: #fff;
+      box-shadow: 0 0 15px 5px rgba(255,255,255,0.8);
+      position: absolute; opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    /* Lightning Flash */
+    #trans-flash { background: #fff; }
+    /* Channel Scan */
+    #trans-scan { background: #000; overflow: hidden; }
+    #trans-scan .scan-num {
+      font-family: 'Courier New', monospace; font-size: 72px; font-weight: bold;
+      color: #0f0; position: absolute; top: 40px; right: 60px;
+      text-shadow: 0 0 10px rgba(0,255,0,0.8);
+    }
+    #trans-scan canvas { width: 100%; height: 100%; }
+    .section-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin: 12px 0 6px; }
+    .section-label:first-child { margin-top: 0; }
+    /* Category chips */
+    #cat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .cat-chip {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 20px; font-size: 13px;
+      cursor: pointer; user-select: none; transition: all 0.2s;
+      border: 1px solid #444; background: #1a1a1a;
+    }
+    .cat-chip.active { border-color: #ff4500; background: rgba(255,69,0,0.15); }
+    .cat-chip .cat-count { font-size: 11px; color: #888; }
+    .cat-chip.active .cat-count { color: #ff4500; }
+    .cat-chip:hover { border-color: #666; }
+    .cat-chip.active:hover { border-color: #ff4500; }
+    /* Category editor */
+    #cat-editor { display: none; margin-bottom: 10px; }
+    #cat-editor.visible { display: block; }
+    .cat-edit-row {
+      display: flex; gap: 6px; align-items: center; margin-bottom: 4px; font-size: 13px;
+    }
+    .cat-edit-row input {
+      padding: 4px 8px; border-radius: 6px; border: 1px solid #444;
+      background: #1a1a1a; color: #fff; font-size: 12px;
+    }
+    .cat-edit-row .cat-edit-name { width: 100px; }
+    .cat-edit-row .cat-edit-keywords { flex: 1; }
+    .btn-sm {
+      padding: 3px 8px; font-size: 11px; background: #333; color: #fff;
+      border-radius: 4px; border: none; cursor: pointer;
+    }
+    .btn-sm:hover { background: #444; }
+    .btn-sm.danger { background: #600; }
+    .btn-sm.danger:hover { background: #900; }
+    #btn-edit-cats { font-size: 11px; color: #888; cursor: pointer; text-decoration: underline; margin-left: 8px; }
+    #scan-progress { font-size: 12px; color: #888; margin-top: 4px; }
+    /* --- CRT TV Overlay --- */
+    #crt-overlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      z-index: 6; pointer-events: none; display: none;
+    }
+    #crt-overlay.active { display: block; }
+    /* Scanlines */
+    #crt-scanlines {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 2px,
+        rgba(0,0,0,0.15) 2px,
+        rgba(0,0,0,0.15) 4px
+      );
+    }
+    /* Screen curvature vignette */
+    #crt-vignette {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+    }
+    /* TV bezel frame */
+    #crt-bezel {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      border: 12px solid #1a1a1a;
+      border-radius: 20px;
+      box-shadow:
+        inset 0 0 80px rgba(0,0,0,0.5),
+        inset 0 0 20px rgba(0,0,0,0.3),
+        0 0 30px rgba(0,0,0,0.8);
+    }
+    /* Glare reflection */
+    #crt-glare {
+      position: absolute; top: 5%; left: 5%; width: 40%; height: 30%;
+      background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 60%);
+      border-radius: 50%;
+    }
+    /* Logo */
+    #logo {
+      position: fixed; top: 16px; left: 20px; z-index: 9;
+      width: 120px; height: auto;
+      opacity: 0.85; pointer-events: none;
+      filter: drop-shadow(0 0 6px rgba(255,69,0,0.4));
+      transition: opacity 0.5s;
+    }
+    #logo.hidden { opacity: 0; }
+    /* Channel number display */
+    #channel-num {
+      position: fixed; top: 30px; right: 40px; z-index: 9;
+      font-family: 'Courier New', monospace;
+      font-size: 42px; font-weight: bold;
+      color: #0f0;
+      text-shadow: 0 0 8px rgba(0,255,0,0.6), 2px 2px 0 rgba(0,0,0,0.8);
+      opacity: 0; transition: opacity 0.4s;
+      pointer-events: none; letter-spacing: 3px;
+    }
+    #channel-num.visible { opacity: 1; }
+    #channel-num.fade-out { opacity: 0; transition: opacity 1.5s ease 3s; }
+  </style>
+</head>
+<body>
+  <div id="player-wrap"><div id="player"></div></div>
+  <div class="transition-overlay" id="trans-fade"></div>
+  <div class="transition-overlay" id="trans-static"><canvas id="static-canvas"></canvas></div>
+  <div class="transition-overlay" id="trans-glitch"></div>
+  <div class="transition-overlay" id="trans-channel"><div class="no-signal">NO SIGNAL</div></div>
+  <div class="transition-overlay" id="trans-vhs"><canvas id="vhs-canvas"></canvas></div>
+  <div class="transition-overlay" id="trans-pixel"><canvas id="pixel-canvas"></canvas></div>
+  <div class="transition-overlay" id="trans-crt"><div class="crt-line"></div><div class="crt-dot"></div></div>
+  <div class="transition-overlay" id="trans-flash"></div>
+  <div class="transition-overlay" id="trans-scan"><canvas id="scan-canvas"></canvas><div class="scan-num">CH 01</div></div>
+  <!-- CRT TV Overlay -->
+  <div id="crt-overlay">
+    <div id="crt-scanlines"></div>
+    <div id="crt-vignette"></div>
+    <div id="crt-bezel"></div>
+    <div id="crt-glare"></div>
+  </div>
+  <img id="logo" src="logo-sm.png" alt="ChannelSurf" class="hidden" />
+  <div id="channel-num">CH 01</div>
+  <div id="status" class="hidden"></div>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+
+  <div id="controls">
+    <div class="row">
+      <label>Playlist ID</label>
+      <input type="text" id="playlist-id" placeholder="YouTube playlist ID" value="PLCgY5X6keprecXzwA9jsi92DhiNZ-_KoY" />
+    </div>
+
+    <div class="section-label">
+      Categories
+      <span id="btn-edit-cats" onclick="toggleCatEditor()">edit</span>
+    </div>
+    <div id="cat-chips"></div>
+    <div id="cat-editor">
+      <div id="cat-edit-list"></div>
+      <div class="cat-edit-row">
+        <input class="cat-edit-name" id="new-cat-name" placeholder="Name" />
+        <input class="cat-edit-keywords" id="new-cat-keywords" placeholder="Keywords (comma separated)" />
+        <button class="btn-sm" onclick="addCategoryDef()">+ Add</button>
+      </div>
+    </div>
+    <div id="scan-progress"></div>
+
+    <div class="section-label">Settings</div>
+    <div class="row">
+      <label>Clip length</label>
+      <input type="range" id="clip-length" min="10" max="300" value="45" />
+      <span class="range-val" id="clip-val">45s</span>
+    </div>
+    <div class="row">
+      <label>Transition</label>
+      <select id="transition-type">
+        <option value="static">📺 TV Static</option>
+        <option value="fade">⬛ Fade to Black</option>
+        <option value="glitch">⚡ Glitch</option>
+        <option value="channel">🔵 No Signal</option>
+        <option value="vhs">📼 VHS Tracking</option>
+        <option value="pixel">🔲 Pixel Dissolve</option>
+        <option value="crt">💀 CRT Power Off</option>
+        <option value="flash">⚡ Lightning Flash</option>
+        <option value="scan">📡 Channel Scan</option>
+        <option value="random">🎲 Random</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>Trans. time</label>
+      <input type="range" id="fade-length" min="0.5" max="5" value="1.5" step="0.5" />
+      <span class="range-val" id="fade-val">1.5s</span>
+    </div>
+    <div class="row">
+      <label>Auto-hide UI</label>
+      <input type="checkbox" id="auto-hide" checked style="width:20px;height:20px;accent-color:#ff4500" />
+    </div>
+    <div class="row">
+      <label>Show title</label>
+      <input type="checkbox" id="show-title" checked style="width:20px;height:20px;accent-color:#ff4500" />
+    </div>
+    <div class="row">
+      <label>CRT overlay</label>
+      <input type="checkbox" id="crt-mode" style="width:20px;height:20px;accent-color:#ff4500" />
+    </div>
+    <div class="row">
+      <label>Channel #</label>
+      <input type="checkbox" id="show-channel" checked style="width:20px;height:20px;accent-color:#ff4500" />
+    </div>
+    <div class="row">
+      <button id="btn-start">▶ Start</button>
+      <button id="btn-skip" style="display:none">⏭ Skip</button>
+      <button id="btn-stop" style="display:none">⏹ Stop</button>
+    </div>
+  </div>
+
+  <script>
+    // --- PWA Service Worker ---
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+
+    // --- State ---
+    let player = null;
+    let allVideos = []; // [{id, title, categories:[]}]
+    let videoIds = []; // active pool
+    let playing = false;
+    let clipTimer = null;
+    let hideTimer = null;
+    let lastPlayed = [];
+    let seekDone = false;
+    let staticAnimId = null;
+    let progressAnimId = null;
+    let clipStartTime = 0;
+    let scanning = false;
+    let channelNumber = 0;
+    let channelFadeTimer = null;
+
+    const $ = id => document.getElementById(id);
+    const status = $('status');
+    const controls = $('controls');
+
+    // --- Category definitions ---
+    let categoryDefs = [
+      { name: '🌆 Synthwave', keywords: ['synthwave','retrowave','outrun','neon','cyberpunk','delorean','vaporwave','chillwave'], enabled: true },
+      { name: '🎮 Pixel Art', keywords: ['pixel','8-bit','8bit','retro game','16-bit','sprite'], enabled: true },
+      { name: '📡 Live Cams', keywords: ['live','24/7','webcam','railcam','train cam','iss','earth from space'], enabled: true },
+      { name: '🔬 Tech', keywords: ['circuit','solder','teardown','macro','microscope','processor','electronic','pcb'], enabled: true },
+      { name: '🌧️ Cozy', keywords: ['rain','fireplace','cozy','cabin','lofi','lo-fi','coffee shop','ambient room'], enabled: true },
+      { name: '🌌 Space', keywords: ['space','nebula','galaxy','cosmos','nasa','orbit','star'], enabled: true },
+      { name: '🔤 ASCII', keywords: ['ascii','text art','matrix code','digital rain'], enabled: true },
+      { name: '🎵 Other', keywords: [], enabled: true }, // catch-all
+    ];
+
+    // --- Categorize a video by title ---
+    function categorizeVideo(title) {
+      const lower = title.toLowerCase();
+      const matched = [];
+      for (const cat of categoryDefs) {
+        if (cat.keywords.length === 0) continue; // skip catch-all
+        if (cat.keywords.some(kw => lower.includes(kw.toLowerCase()))) {
+          matched.push(cat.name);
+        }
+      }
+      // If nothing matched, put in "Other"
+      if (matched.length === 0) {
+        const other = categoryDefs.find(c => c.keywords.length === 0);
+        if (other) matched.push(other.name);
+      }
+      return matched;
+    }
+
+    // --- Build active video pool from enabled categories ---
+    function buildVideoPool() {
+      const enabledNames = categoryDefs.filter(c => c.enabled).map(c => c.name);
+      videoIds = allVideos
+        .filter(v => v.categories.some(c => enabledNames.includes(c)))
+        .map(v => v.id);
+      lastPlayed = lastPlayed.filter(id => videoIds.includes(id));
+    }
+
+    // --- Render category chips ---
+    function renderChips() {
+      const el = $('cat-chips');
+      el.innerHTML = '';
+      categoryDefs.forEach((cat, i) => {
+        const count = allVideos.filter(v => v.categories.includes(cat.name)).length;
+        const chip = document.createElement('div');
+        chip.className = 'cat-chip' + (cat.enabled ? ' active' : '');
+        chip.innerHTML = `${cat.name} <span class="cat-count">${count || ''}</span>`;
+        chip.onclick = () => {
+          cat.enabled = !cat.enabled;
+          chip.classList.toggle('active');
+          buildVideoPool();
+          saveSettings();
+        };
+        el.appendChild(chip);
+      });
+    }
+
+    // --- Category editor ---
+    function toggleCatEditor() {
+      $('cat-editor').classList.toggle('visible');
+      if ($('cat-editor').classList.contains('visible')) renderCatEditor();
+    }
+
+    function renderCatEditor() {
+      const el = $('cat-edit-list');
+      el.innerHTML = '';
+      categoryDefs.forEach((cat, i) => {
+        const row = document.createElement('div');
+        row.className = 'cat-edit-row';
+        row.innerHTML = `
+          <input class="cat-edit-name" value="${cat.name}" onchange="updateCatDef(${i},'name',this.value)" />
+          <input class="cat-edit-keywords" value="${cat.keywords.join(', ')}" onchange="updateCatDef(${i},'keywords',this.value)" placeholder="Keywords (comma separated)" />
+          <button class="btn-sm danger" onclick="removeCatDef(${i})">✕</button>
+        `;
+        el.appendChild(row);
+      });
+    }
+
+    function updateCatDef(i, field, value) {
+      if (field === 'name') categoryDefs[i].name = value;
+      if (field === 'keywords') categoryDefs[i].keywords = value.split(',').map(s => s.trim()).filter(Boolean);
+      // Re-categorize all videos
+      allVideos.forEach(v => v.categories = categorizeVideo(v.title));
+      buildVideoPool();
+      renderChips();
+      saveSettings();
+    }
+
+    function removeCatDef(i) {
+      categoryDefs.splice(i, 1);
+      allVideos.forEach(v => v.categories = categorizeVideo(v.title));
+      buildVideoPool();
+      renderChips();
+      renderCatEditor();
+      saveSettings();
+    }
+
+    function addCategoryDef() {
+      const name = $('new-cat-name').value.trim();
+      const keywords = $('new-cat-keywords').value.split(',').map(s => s.trim()).filter(Boolean);
+      if (!name) return;
+      // Insert before catch-all (last)
+      const insertAt = categoryDefs.length > 0 && categoryDefs[categoryDefs.length-1].keywords.length === 0
+        ? categoryDefs.length - 1 : categoryDefs.length;
+      categoryDefs.splice(insertAt, 0, { name, keywords, enabled: true });
+      $('new-cat-name').value = '';
+      $('new-cat-keywords').value = '';
+      allVideos.forEach(v => v.categories = categorizeVideo(v.title));
+      buildVideoPool();
+      renderChips();
+      renderCatEditor();
+      saveSettings();
+    }
+
+    // --- Scan playlist to get titles ---
+    async function scanPlaylistTitles(playlistVideoIds) {
+      scanning = true;
+      allVideos = [];
+      const total = playlistVideoIds.length;
+      const scanEl = $('scan-progress');
+
+      for (let i = 0; i < total; i++) {
+        const vid = playlistVideoIds[i];
+        scanEl.textContent = `Scanning titles... ${i+1}/${total}`;
+
+        // Cue video to get its title
+        await new Promise((resolve) => {
+          player.cueVideoById(vid);
+          // Poll for title
+          let attempts = 0;
+          const check = setInterval(() => {
+            attempts++;
+            try {
+              const data = player.getVideoData();
+              if (data && data.title && data.title.length > 0) {
+                clearInterval(check);
+                const cats = categorizeVideo(data.title);
+                allVideos.push({ id: vid, title: data.title, categories: cats });
+                resolve();
+              } else if (attempts > 20) {
+                clearInterval(check);
+                allVideos.push({ id: vid, title: 'Unknown', categories: ['🎵 Other'] });
+                resolve();
+              }
+            } catch(e) {
+              if (attempts > 20) {
+                clearInterval(check);
+                allVideos.push({ id: vid, title: 'Unknown', categories: ['🎵 Other'] });
+                resolve();
+              }
+            }
+          }, 150);
+        });
+      }
+
+      scanEl.textContent = '';
+      scanning = false;
+      renderChips();
+      buildVideoPool();
+
+      // Cache the scan results
+      cacheScan(playlistVideoIds);
+    }
+
+    // --- Cache scanned titles ---
+    function cacheScan(ids) {
+      const pid = $('playlist-id').value.trim();
+      const cache = { pid, videos: allVideos.map(v => ({ id: v.id, title: v.title })), ts: Date.now() };
+      localStorage.setItem('channelsurf-cache', JSON.stringify(cache));
+    }
+
+    function loadCachedScan(pid, ids) {
+      try {
+        const cache = JSON.parse(localStorage.getItem('channelsurf-cache'));
+        if (!cache || cache.pid !== pid) return false;
+        // Check if playlist has changed (different video IDs)
+        const cachedIds = cache.videos.map(v => v.id).sort().join(',');
+        const currentIds = ids.sort().join(',');
+        if (cachedIds !== currentIds) return false;
+        // Cache is still valid (use 24h expiry)
+        if (Date.now() - cache.ts > 86400000) return false;
+        allVideos = cache.videos.map(v => ({
+          id: v.id, title: v.title, categories: categorizeVideo(v.title)
+        }));
+        renderChips();
+        buildVideoPool();
+        return true;
+      } catch(e) { return false; }
+    }
+
+    // --- Static canvas ---
+    const staticCanvas = $('static-canvas');
+    const staticCtx = staticCanvas.getContext('2d');
+    function resizeStaticCanvas() { staticCanvas.width = window.innerWidth; staticCanvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeStaticCanvas);
+    resizeStaticCanvas();
+    function drawStatic() {
+      const w = staticCanvas.width, h = staticCanvas.height;
+      const d = staticCtx.createImageData(w, h).data;
+      const img = staticCtx.createImageData(w, h);
+      for (let i = 0; i < img.data.length; i += 4) {
+        const v = Math.random() * 255;
+        img.data[i] = v; img.data[i+1] = v; img.data[i+2] = v; img.data[i+3] = 255;
+      }
+      staticCtx.putImageData(img, 0, 0);
+      staticAnimId = requestAnimationFrame(drawStatic);
+    }
+    function startStatic() { if (!staticAnimId) drawStatic(); }
+    function stopStatic() { if (staticAnimId) { cancelAnimationFrame(staticAnimId); staticAnimId = null; } }
+
+    // --- Glitch ---
+    function startGlitch() {
+      const el = $('trans-glitch'); el.innerHTML = '';
+      for (let i = 0; i < 20; i++) {
+        const bar = document.createElement('div'); bar.className = 'glitch-bar';
+        bar.style.height = (Math.random()*40+5)+'px'; bar.style.top = (Math.random()*100)+'%';
+        bar.style.background = `rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},${Math.random()*0.3+0.1})`;
+        bar.style.transform = `translateX(${(Math.random()-0.5)*40}px)`;
+        el.appendChild(bar);
+      }
+    }
+
+    // --- Transitions ---
+    const overlayIds = ['trans-fade','trans-static','trans-glitch','trans-channel','trans-vhs','trans-pixel','trans-crt','trans-flash','trans-scan'];
+    let vhsAnimId = null, pixelAnimId = null, scanAnimId = null, scanNumInterval = null;
+
+    function hideAllTransitions() {
+      overlayIds.forEach(id => $(id).classList.remove('active'));
+      stopStatic(); stopVhs(); stopPixel(); stopScan();
+      // Reset CRT
+      const line = document.querySelector('.crt-line');
+      const dot = document.querySelector('.crt-dot');
+      if (line) { line.style.width = '100%'; line.style.height = '2px'; line.style.opacity = '1'; }
+      if (dot) { dot.style.opacity = '0'; }
+    }
+
+    const allTransTypes = ['static','fade','glitch','channel','vhs','pixel','crt','flash','scan'];
+    function getTransitionType() {
+      const val = $('transition-type').value;
+      if (val === 'random') return allTransTypes[Math.floor(Math.random()*allTransTypes.length)];
+      return val;
+    }
+    function showTransition(type) {
+      hideAllTransitions();
+      if (type === 'static') startStatic();
+      if (type === 'glitch') startGlitch();
+      if (type === 'vhs') startVhs();
+      if (type === 'pixel') startPixel();
+      if (type === 'crt') startCrt();
+      if (type === 'scan') startScan();
+      $('trans-'+type).classList.add('active');
+    }
+
+    // --- VHS Tracking effect ---
+    const vhsCanvas = $('vhs-canvas');
+    const vhsCtx = vhsCanvas.getContext('2d');
+    function resizeVhsCanvas() { vhsCanvas.width = window.innerWidth; vhsCanvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeVhsCanvas);
+    resizeVhsCanvas();
+    function drawVhs() {
+      const w = vhsCanvas.width, h = vhsCanvas.height;
+      vhsCtx.fillStyle = '#000';
+      vhsCtx.fillRect(0, 0, w, h);
+      // Horizontal tracking lines
+      for (let i = 0; i < 12; i++) {
+        const y = Math.random() * h;
+        const thickness = Math.random() * 8 + 2;
+        const offset = (Math.random() - 0.5) * 60;
+        vhsCtx.fillStyle = `rgba(${180+Math.random()*75},${180+Math.random()*75},${180+Math.random()*75},${Math.random()*0.4+0.1})`;
+        vhsCtx.fillRect(offset, y, w, thickness);
+      }
+      // Colour bleed bars
+      for (let i = 0; i < 4; i++) {
+        const y = Math.random() * h;
+        const colors = ['rgba(255,0,0,0.15)','rgba(0,255,255,0.15)','rgba(255,0,255,0.12)'];
+        vhsCtx.fillStyle = colors[Math.floor(Math.random()*colors.length)];
+        vhsCtx.fillRect(0, y, w, Math.random() * 30 + 5);
+      }
+      // Rolling band
+      const bandY = (Date.now() / 8) % (h + 200) - 100;
+      vhsCtx.fillStyle = 'rgba(255,255,255,0.08)';
+      vhsCtx.fillRect(0, bandY, w, 80);
+      vhsAnimId = requestAnimationFrame(drawVhs);
+    }
+    function startVhs() { if (!vhsAnimId) drawVhs(); }
+    function stopVhs() { if (vhsAnimId) { cancelAnimationFrame(vhsAnimId); vhsAnimId = null; } }
+
+    // --- Pixel Dissolve effect ---
+    const pixelCanvas = $('pixel-canvas');
+    const pixelCtx = pixelCanvas.getContext('2d');
+    let pixelBlocks = [];
+    let pixelStartMs = 0;
+    function resizePixelCanvas() { pixelCanvas.width = window.innerWidth; pixelCanvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizePixelCanvas);
+    resizePixelCanvas();
+    function startPixel() {
+      const w = pixelCanvas.width, h = pixelCanvas.height;
+      const blockSize = 24;
+      const cols = Math.ceil(w / blockSize), rows = Math.ceil(h / blockSize);
+      pixelBlocks = [];
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          pixelBlocks.push({
+            x: c * blockSize, y: r * blockSize,
+            w: blockSize, h: blockSize,
+            delay: Math.random() * 800,
+            color: `rgb(${Math.random()*40|0},${Math.random()*40|0},${Math.random()*40|0})`
+          });
+        }
+      }
+      pixelStartMs = Date.now();
+      drawPixel();
+    }
+    function drawPixel() {
+      const w = pixelCanvas.width, h = pixelCanvas.height;
+      const elapsed = Date.now() - pixelStartMs;
+      pixelCtx.clearRect(0, 0, w, h);
+      for (const b of pixelBlocks) {
+        if (elapsed > b.delay) {
+          pixelCtx.fillStyle = b.color;
+          pixelCtx.fillRect(b.x, b.y, b.w, b.h);
+        }
+      }
+      if (elapsed < 1200) pixelAnimId = requestAnimationFrame(drawPixel);
+    }
+    function stopPixel() { if (pixelAnimId) { cancelAnimationFrame(pixelAnimId); pixelAnimId = null; } }
+
+    // --- CRT Power Off effect ---
+    function startCrt() {
+      const line = document.querySelector('.crt-line');
+      const dot = document.querySelector('.crt-dot');
+      line.style.transition = 'none';
+      line.style.width = '100%'; line.style.height = '100vh'; line.style.opacity = '1';
+      dot.style.opacity = '0';
+      requestAnimationFrame(() => {
+        line.style.transition = 'all 0.3s ease-in';
+        line.style.height = '2px';
+        setTimeout(() => {
+          line.style.transition = 'all 0.2s ease-in';
+          line.style.width = '0px';
+          line.style.opacity = '0';
+          dot.style.opacity = '1';
+          setTimeout(() => { dot.style.opacity = '0'; }, 500);
+        }, 350);
+      });
+    }
+
+    // --- Channel Scan effect ---
+    const scanCanvas = $('scan-canvas');
+    const scanCtx = scanCanvas.getContext('2d');
+    function resizeScanCanvas() { scanCanvas.width = window.innerWidth; scanCanvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeScanCanvas);
+    resizeScanCanvas();
+    function drawScanStatic() {
+      const w = scanCanvas.width, h = scanCanvas.height;
+      const img = scanCtx.createImageData(w, h);
+      for (let i = 0; i < img.data.length; i += 4) {
+        const v = Math.random() * 200;
+        img.data[i] = v; img.data[i+1] = v; img.data[i+2] = v; img.data[i+3] = 255;
+      }
+      scanCtx.putImageData(img, 0, 0);
+      scanAnimId = requestAnimationFrame(drawScanStatic);
+    }
+    function startScan() {
+      drawScanStatic();
+      let ch = Math.floor(Math.random() * 80) + 1;
+      const numEl = document.querySelector('.scan-num');
+      numEl.textContent = 'CH ' + String(ch).padStart(2, '0');
+      scanNumInterval = setInterval(() => {
+        ch = Math.floor(Math.random() * 99) + 1;
+        numEl.textContent = 'CH ' + String(ch).padStart(2, '0');
+      }, 200);
+    }
+    function stopScan() {
+      if (scanAnimId) { cancelAnimationFrame(scanAnimId); scanAnimId = null; }
+      if (scanNumInterval) { clearInterval(scanNumInterval); scanNumInterval = null; }
+    }
+
+    // --- Settings ---
+    const clipSlider = $('clip-length');
+    const fadeSlider = $('fade-length');
+    clipSlider.oninput = () => $('clip-val').textContent = clipSlider.value + 's';
+    fadeSlider.oninput = () => $('fade-val').textContent = fadeSlider.value + 's';
+
+    function saveSettings() {
+      const s = {
+        playlistId: $('playlist-id').value,
+        categoryDefs: categoryDefs,
+        clipLength: clipSlider.value,
+        fadeLength: fadeSlider.value,
+        transition: $('transition-type').value,
+        autoHide: $('auto-hide').checked,
+        showTitle: $('show-title').checked,
+        crtMode: $('crt-mode').checked,
+        showChannel: $('show-channel').checked
+      };
+      localStorage.setItem('channelsurf', JSON.stringify(s));
+    }
+    function loadSettings() {
+      try {
+        const s = JSON.parse(localStorage.getItem('channelsurf'));
+        if (s) {
+          if (s.playlistId) $('playlist-id').value = s.playlistId;
+          if (s.categoryDefs) categoryDefs = s.categoryDefs;
+          clipSlider.value = s.clipLength || 45;
+          fadeSlider.value = s.fadeLength || 1.5;
+          if (s.transition) $('transition-type').value = s.transition;
+          if (s.autoHide !== undefined) $('auto-hide').checked = s.autoHide;
+          if (s.showTitle !== undefined) $('show-title').checked = s.showTitle;
+          if (s.crtMode !== undefined) { $('crt-mode').checked = s.crtMode; $('crt-overlay').classList.toggle('active', s.crtMode); }
+          if (s.showChannel !== undefined) $('show-channel').checked = s.showChannel;
+        }
+        clipSlider.oninput(); fadeSlider.oninput();
+      } catch(e) {}
+      renderChips();
+    }
+    loadSettings();
+
+    // --- YouTube API ---
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+    window.onYouTubeIframeAPIReady = () => {
+      player = new YT.Player('player', {
+        playerVars: { autoplay:0, controls:0, disablekb:1, fs:0, modestbranding:1, rel:0, showinfo:0, iv_load_policy:3, playsinline:1 },
+        events: {
+          onReady: () => showStatus('ChannelSurf — hit Start'),
+          onStateChange: onPlayerState,
+          onError: () => { if (playing) { showStatus('Video error, skipping...'); setTimeout(playNext, 2000); } }
+        }
+      });
+    };
+
+    // --- Fetch playlist ---
+    async function fetchPlaylistVideos(playlistId) {
+      showStatus('Loading playlist...');
+      return new Promise((resolve, reject) => {
+        player.cuePlaylist({ list: playlistId, listType: 'playlist' });
+        const check = setInterval(() => {
+          const list = player.getPlaylist();
+          if (list && list.length > 0) { clearInterval(check); resolve(list); }
+        }, 500);
+        setTimeout(() => { clearInterval(check); reject('Timeout loading playlist'); }, 15000);
+      });
+    }
+
+    // --- Playback ---
+    function pickRandom() {
+      if (videoIds.length === 0) return null;
+      const available = videoIds.filter(id => !lastPlayed.includes(id));
+      const pool = available.length > 0 ? available : videoIds;
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      lastPlayed.push(pick);
+      if (lastPlayed.length > Math.min(10, Math.floor(videoIds.length * 0.5))) lastPlayed.shift();
+      return pick;
+    }
+
+    function playNext() {
+      if (!playing) return;
+      clearTimeout(clipTimer);
+      const videoId = pickRandom();
+      if (!videoId) { showStatus('No videos in active categories'); return; }
+      const fadeSec = parseFloat(fadeSlider.value);
+      showTransition(getTransitionType());
+      showChannelNumber();
+      setTimeout(() => { seekDone = false; player.loadVideoById(videoId); }, fadeSec * 1000);
+    }
+
+    function onPlayerState(event) {
+      if (scanning) return; // ignore state changes during scan
+      if (event.data === YT.PlayerState.PLAYING) {
+        const clipLen = parseInt(clipSlider.value);
+        const duration = player.getDuration();
+        const isLive = !duration || !isFinite(duration);
+
+        if (!seekDone && !isLive) {
+          seekDone = true;
+          if (duration > clipLen + 10) {
+            const maxStart = duration - clipLen - 5;
+            player.seekTo(Math.max(5, Math.random() * maxStart), true);
+            return;
+          }
+        }
+
+        setTimeout(() => hideAllTransitions(), 300);
+
+        if ($('show-title').checked) {
+          try {
+            const data = player.getVideoData();
+            const title = data.title || 'Unknown';
+            const vid = allVideos.find(v => v.id === data.video_id);
+            const catLabel = vid ? vid.categories[0] : '';
+            const prefix = isLive ? '🔴 LIVE' : catLabel;
+            showStatus(prefix ? prefix + ' · ' + title : title);
+          } catch(e) { showStatus('Playing...'); }
+        } else { status.classList.add('hidden'); }
+
+        clipStartTime = Date.now();
+        startProgressBar(clipLen);
+        clipTimer = setTimeout(() => playNext(), clipLen * 1000);
+        scheduleHideControls();
+      } else if (event.data === YT.PlayerState.ENDED) { playNext(); }
+    }
+
+    // --- Controls ---
+    function scheduleHideControls() {
+      clearTimeout(hideTimer);
+      if (!$('auto-hide').checked) { controls.classList.remove('hidden'); status.classList.remove('hidden'); }
+      hideTimer = setTimeout(() => {
+        if (playing) { controls.classList.add('hidden'); status.classList.add('hidden'); }
+      }, 4000);
+    }
+    document.body.addEventListener('click', (e) => {
+      if (playing && !e.target.closest('#controls')) {
+        controls.classList.remove('hidden'); status.classList.remove('hidden'); scheduleHideControls();
+      }
+    });
+    function showStatus(msg) { status.textContent = msg; status.classList.remove('hidden'); }
+
+    // --- CRT Overlay ---
+    $('crt-mode').onchange = () => {
+      $('crt-overlay').classList.toggle('active', $('crt-mode').checked);
+      saveSettings();
+    };
+    $('show-channel').onchange = () => {
+      if (!$('show-channel').checked) $('channel-num').classList.remove('visible');
+      saveSettings();
+    };
+
+    function showChannelNumber() {
+      if (!$('show-channel').checked) return;
+      channelNumber++;
+      const el = $('channel-num');
+      el.textContent = 'CH ' + String(channelNumber).padStart(2, '0');
+      el.classList.remove('fade-out');
+      el.classList.add('visible');
+      clearTimeout(channelFadeTimer);
+      // Show for a moment then fade out
+      channelFadeTimer = setTimeout(() => {
+        el.classList.add('fade-out');
+      }, 100);
+    }
+
+    // --- Progress bar ---
+    function startProgressBar(clipLen) {
+      cancelAnimationFrame(progressAnimId);
+      const fill = $('progress-fill'); const totalMs = clipLen * 1000;
+      function tick() {
+        const r = Math.max(0, 1 - ((Date.now() - clipStartTime) / totalMs));
+        fill.style.transform = 'scaleX(' + r + ')';
+        if (r > 0 && playing) progressAnimId = requestAnimationFrame(tick);
+      }
+      tick();
+    }
+    function stopProgressBar() { cancelAnimationFrame(progressAnimId); $('progress-fill').style.transform = 'scaleX(0)'; }
+
+    // --- Buttons ---
+    $('btn-start').onclick = async () => {
+      const pid = $('playlist-id').value.trim();
+      if (!pid) { showStatus('Enter a playlist ID!'); return; }
+      saveSettings();
+
+      try {
+        const ids = await fetchPlaylistVideos(pid);
+        showStatus(`Found ${ids.length} videos`);
+
+        // Try cache first
+        if (!loadCachedScan(pid, [...ids])) {
+          await scanPlaylistTitles(ids);
+        }
+
+        showStatus(`${videoIds.length} videos active across ${categoryDefs.filter(c=>c.enabled).length} categories`);
+        playing = true;
+        $('btn-start').style.display = 'none';
+        $('btn-skip').style.display = '';
+        $('btn-stop').style.display = '';
+        $('logo').classList.remove('hidden');
+        playNext();
+      } catch(e) { showStatus('Failed: ' + e); }
+    };
+
+    $('btn-skip').onclick = (e) => { e.stopPropagation(); playNext(); };
+    $('btn-stop').onclick = (e) => {
+      e.stopPropagation(); playing = false;
+      clearTimeout(clipTimer); stopProgressBar();
+      player.stopVideo(); hideAllTransitions();
+      channelNumber = 0; $('channel-num').classList.remove('visible', 'fade-out');
+      $('logo').classList.add('hidden');
+      controls.classList.remove('hidden'); status.classList.remove('hidden');
+      $('btn-start').style.display = ''; $('btn-skip').style.display = 'none'; $('btn-stop').style.display = 'none';
+      showStatus('Stopped');
+    };
+  </script>
+</body>
+</html>

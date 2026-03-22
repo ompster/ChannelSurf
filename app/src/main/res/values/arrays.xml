@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="transition_labels">
+        <item>📺 TV Static</item>
+        <item>⬛ Fade to Black</item>
+        <item>⚡ Glitch</item>
+        <item>🔵 No Signal</item>
+        <item>📼 VHS Tracking</item>
+        <item>🔲 Pixel Dissolve</item>
+        <item>💀 CRT Power Off</item>
+        <item>⚡ Lightning Flash</item>
+        <item>📡 Channel Scan</item>
+        <item>🎲 Random</item>
+    </string-array>
+</resources>
