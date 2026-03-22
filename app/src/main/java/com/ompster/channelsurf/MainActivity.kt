@@ -179,12 +179,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestNearbyPermission() {
+        val permsNeeded = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+: need NEARBY_WIFI_DEVICES
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES)
                 != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                    arrayOf(Manifest.permission.NEARBY_WIFI_DEVICES), 100)
+                permsNeeded.add(Manifest.permission.NEARBY_WIFI_DEVICES)
             }
+        }
+        // All versions: location helps with Cast/mDNS discovery
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+            permsNeeded.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+        if (permsNeeded.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, permsNeeded.toTypedArray(), 100)
         }
     }
 
