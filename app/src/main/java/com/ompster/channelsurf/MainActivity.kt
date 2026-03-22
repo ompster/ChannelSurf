@@ -1,10 +1,13 @@
 package com.ompster.channelsurf
 
 import android.annotation.SuppressLint
+import android.os.Build
 import android.os.Bundle
 import android.view.Menu
 import android.view.View
+import android.webkit.CookieManager
 import android.webkit.WebChromeClient
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.*
@@ -124,10 +127,23 @@ class MainActivity : AppCompatActivity() {
             fadeValue.text = "${String.format("%.1f", value)}s"
         }
 
-        // WebView setup (local fallback)
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
-        webView.settings.mediaPlaybackRequiresUserGesture = false
+        // WebView setup (local fallback — needs full browser capabilities for YouTube)
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            mediaPlaybackRequiresUserGesture = false
+            javaScriptCanOpenWindowsAutomatically = true
+            allowContentAccess = true
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            loadWithOverviewMode = true
+            useWideViewPort = true
+            databaseEnabled = true
+            setSupportMultipleWindows(true)
+        }
+        // Enable third-party cookies (required for YouTube auth/embeds)
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
+        // Hardware acceleration for video
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
         webView.webChromeClient = WebChromeClient()
         webView.webViewClient = WebViewClient()
 
