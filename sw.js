@@ -1,5 +1,5 @@
-const CACHE_NAME = 'channelsurf-v1';
-const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE_NAME = 'channelsurf-v2';
+const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png', './logo-sm.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));

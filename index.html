@@ -174,6 +174,15 @@
       background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 60%);
       border-radius: 50%;
     }
+    /* Logo */
+    #logo {
+      position: fixed; top: 16px; left: 20px; z-index: 9;
+      width: 120px; height: auto;
+      opacity: 0.85; pointer-events: none;
+      filter: drop-shadow(0 0 6px rgba(255,69,0,0.4));
+      transition: opacity 0.5s;
+    }
+    #logo.hidden { opacity: 0; }
     /* Channel number display */
     #channel-num {
       position: fixed; top: 30px; right: 40px; z-index: 9;
@@ -206,6 +215,7 @@
     <div id="crt-bezel"></div>
     <div id="crt-glare"></div>
   </div>
+  <img id="logo" src="logo-sm.png" alt="ChannelSurf" class="hidden" />
   <div id="channel-num">CH 01</div>
   <div id="status" class="hidden"></div>
   <div id="progress-bar"><div id="progress-fill"></div></div>
@@ -883,6 +893,7 @@
         $('btn-start').style.display = 'none';
         $('btn-skip').style.display = '';
         $('btn-stop').style.display = '';
+        $('logo').classList.remove('hidden');
         playNext();
       } catch(e) { showStatus('Failed: ' + e); }
     };
@@ -893,6 +904,7 @@
       clearTimeout(clipTimer); stopProgressBar();
       player.stopVideo(); hideAllTransitions();
       channelNumber = 0; $('channel-num').classList.remove('visible', 'fade-out');
+      $('logo').classList.add('hidden');
       controls.classList.remove('hidden'); status.classList.remove('hidden');
       $('btn-start').style.display = ''; $('btn-skip').style.display = 'none'; $('btn-stop').style.display = 'none';
       showStatus('Stopped');
