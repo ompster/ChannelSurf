@@ -55,6 +55,35 @@
                 android:layout_gravity="center_horizontal"
                 android:layout_marginBottom="24dp" />
 
+            <!-- YouTube Sign In -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <Button
+                    android:id="@+id/btn_sign_in"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="Sign into YouTube"
+                    android:textSize="12sp"
+                    android:textColor="#ffffff"
+                    android:backgroundTint="#cc0000" />
+
+                <TextView
+                    android:id="@+id/sign_in_status"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Not signed in — ads will play"
+                    android:textColor="#888888"
+                    android:textSize="12sp"
+                    android:layout_marginStart="12dp" />
+
+            </LinearLayout>
+
             <!-- Playlist ID -->
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"

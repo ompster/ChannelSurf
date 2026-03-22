@@ -1,6 +1,8 @@
 package com.ompster.channelsurf
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.Menu
@@ -13,6 +15,8 @@ import android.webkit.WebViewClient
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -42,9 +46,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnStart: Button
     private lateinit var btnSkip: Button
     private lateinit var btnStop: Button
+    private lateinit var btnSignIn: Button
     private lateinit var webView: WebView
     private lateinit var controlsLayout: View
     private lateinit var castStatus: TextView
+    private lateinit var signInStatus: TextView
 
     // Cast
     private var castContext: CastContext? = null
@@ -147,6 +153,11 @@ class MainActivity : AppCompatActivity() {
         webView.webChromeClient = WebChromeClient()
         webView.webViewClient = WebViewClient()
 
+        // Sign in button
+        btnSignIn = findViewById(R.id.btn_sign_in)
+        signInStatus = findViewById(R.id.sign_in_status)
+        btnSignIn.setOnClickListener { onYouTubeSignIn() }
+
         // Buttons
         btnStart.setOnClickListener { onStartSurfing() }
         btnSkip.setOnClickListener { onSkip() }
@@ -155,11 +166,25 @@ class MainActivity : AppCompatActivity() {
         // Load saved settings
         loadSettings()
 
-        // Cast
+        // Check if already signed into YouTube
+        checkYouTubeSignIn()
+
+        // Cast — request nearby devices permission on Android 12+
+        requestNearbyPermission()
         try {
             castContext = CastContext.getSharedInstance(this)
         } catch (e: Exception) {
             castStatus.text = "Cast unavailable"
+        }
+    }
+
+    private fun requestNearbyPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES)
+                != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                    arrayOf(Manifest.permission.NEARBY_WIFI_DEVICES), 100)
+            }
         }
     }
 
@@ -270,6 +295,49 @@ class MainActivity : AppCompatActivity() {
                 """.trimIndent()
                 webView.evaluateJavascript(js, null)
             }
+        }
+    }
+
+    // --- YouTube Sign In ---
+    private fun onYouTubeSignIn() {
+        webView.visibility = View.VISIBLE
+        controlsLayout.visibility = View.GONE
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                // If we've landed back on YouTube or our app, sign-in is done
+                if (url?.contains("youtube.com") == true && !url.contains("accounts.google.com")) {
+                    checkYouTubeSignIn()
+                    // Go back to controls after a moment
+                    webView.postDelayed({
+                        webView.visibility = View.GONE
+                        controlsLayout.visibility = View.VISIBLE
+                    }, 1500)
+                }
+            }
+        }
+        webView.loadUrl("https://accounts.google.com/ServiceLogin?continue=https://www.youtube.com/")
+    }
+
+    private fun checkYouTubeSignIn() {
+        val cookieManager = CookieManager.getInstance()
+        val cookies = cookieManager.getCookie("https://www.youtube.com/") ?: ""
+        val signedIn = cookies.contains("SID=") || cookies.contains("LOGIN_INFO=")
+        if (signedIn) {
+            signInStatus.text = "✓ YouTube signed in (Premium active)"
+            signInStatus.setTextColor(0xFF4CAF50.toInt())
+            btnSignIn.text = "Sign Out"
+            btnSignIn.setOnClickListener {
+                cookieManager.removeAllCookies(null)
+                signInStatus.text = "Not signed in — ads will play"
+                signInStatus.setTextColor(0xFF888888.toInt())
+                btnSignIn.text = "Sign into YouTube"
+                btnSignIn.setOnClickListener { onYouTubeSignIn() }
+            }
+        } else {
+            signInStatus.text = "Not signed in — ads will play"
+            signInStatus.setTextColor(0xFF888888.toInt())
+            btnSignIn.text = "Sign into YouTube"
         }
     }
 
